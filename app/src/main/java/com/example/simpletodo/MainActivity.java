@@ -1,9 +1,11 @@
 package com.example.simpletodo;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -20,6 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    public static final String KEY_ITEM_TEXT = "item text";
+    public static final String KEY_ITEM_POSITION = "item_position";
+    public static final int EDIT_TEXT_CODE = 20;
+
     List<String> items;
 
     Button btnAdd;
@@ -52,7 +59,21 @@ public class MainActivity extends AppCompatActivity {
                 saveItems();
             }
         };
-        itemsAdapter = new ItemsAdapter(items, onLongClickListener);
+
+        ItemsAdapter.OnClickListener onClickListener = new ItemsAdapter.OnClickListener() {
+            @Override
+            public void onItemClicked(int position) {
+                Log.d("MainActivity", "Single click at position" + position);
+                // Create the new activity
+                Intent i = new Intent(MainActivity.this, EditActivity.class);
+                // pass data being edited
+                i.putExtra(KEY_ITEM_TEXT, items.get(position));
+                i.putExtra(KEY_ITEM_POSITION, position);
+                //Display the activity
+                startActivityForResult(i, EDIT_TEXT_CODE);
+            }
+        };
+        itemsAdapter = new ItemsAdapter(items, onLongClickListener, onClickListener);
         rvItems.setAdapter(itemsAdapter);
         rvItems.setLayoutManager(new LinearLayoutManager(this));
 
@@ -69,6 +90,29 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    // handle result of edit activity
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+
+        if (requestCode == EDIT_TEXT_CODE && resultCode == RESULT_OK) {
+            // Retreive updated text value
+            String itemText = data.getStringExtra(KEY_ITEM_TEXT);
+            // extract the original position of the edited item
+            int position = data.getExtras().getInt(KEY_ITEM_POSITION);
+
+            // update the model at the right position with new items
+            items.set(position, itemText);
+            // notify the adapter
+
+            itemsAdapter.notifyItemChanged(position);
+            // persist the changes
+            saveItems();
+            Toast.makeText(getApplicationContext(), "Item updated successfully", Toast.LENGTH_SHORT).show();
+        } else {
+            Log.w("MainActivity", "Unknown call to onActivityResult");
+        }
+    }
+
     private File getDataFile() {
         return new File(getFilesDir(), "data.txt");
     }
